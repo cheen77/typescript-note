@@ -1425,3 +1425,63 @@ type a6 = 1 extends never ? 1 : 0; //0
 
 # 13. never 类型
 
+## 定义
+
+`TypeScript` 将使用` never` 类型来表示不应该存在的状态
+
+```typescript
+// 返回never的函数必须存在无法达到的终点
+type CC = string & number; //never
+// 因为必定抛出异常，所以 error 将不会有返回值
+function error(message: string): never {
+  throw new Error(message);
+}
+
+// 因为存在死循环，所以 loop 将不会有返回值
+function loop(): never {
+  while (true) {}
+}
+```
+
+## never 与 void 的差异
+
+```typescript
+//void类型只是没有返回值 但本身不会出错
+function Void(): void {
+  console.log();
+}
+
+//只会抛出异常没有返回值
+function Never(): never {
+  throw new Error("aaa");
+}
+```
+
+差异 2
+
+当我们鼠标移上去的时候会发现 只有 void 和 number never 在联合类型中会被直接移除
+
+```typescript
+type A = void | number | never;
+```
+
+## 场景
+
+```typescript
+type KUN = "唱" | "跳" | "rap";
+
+function IKun(value: KUN) {
+  switch (value) {
+    case "唱":
+      break;
+    case "跳":
+      break;
+    case "rap":
+      break;
+    default:
+      //是用于场景兜底逻辑
+      const error: never = value;
+      return error;
+  }
+}
+```
