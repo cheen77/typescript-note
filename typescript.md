@@ -886,30 +886,330 @@ let vue = new Vue({
 
 ## 3.class 的修饰符 readonly private protected public
 
-```typescript
+### readonly
 
+`readonly`只读属性关键字，只允许出现在`属性声明`或`索引签名`或`构造函数中`。
+
+```typescript
+class Animal {
+  readonly name;
+  public constructor(name) {
+    this.name = name;
+  }
+}
+
+let a = new Animal("Jack");
+console.log(a.name); // Jack
+a.name = "Tom";
+
+// index.ts(10,3): TS2540: Cannot assign to 'name' because it is a read-only property.
+```
+
+注意如果  `readonly`  和其他访问修饰符同时存在的话，需要写在其后面。
+
+```typescript
+class Animal {
+  // public readonly name;
+  public constructor(public readonly name) {
+    // this.name = name;
+  }
+}
+```
+
+### public private 和 protected
+
+TypeScript 可以使用三种访问修饰符（Access Modifiers），分别是 `public`、`private` 和 `protected`。
+
+- `public` 修饰的属性或方法是公有的，可以在任何地方被访问到，默认所有的属性和方法都是 `public` 的
+- `private` 修饰的属性或方法是私有的，只能在类中访问
+- `protected` 修饰的属性或方法是受保护的，子类和类中可以访问
+
+```typescript
+// public
+class Animal {
+  public name;
+  public constructor(name) {
+    this.name = name;
+  }
+}
+
+let jack = new Animal("Jack");
+console.log(jack.name); // Jack
+jack.name = "Tom";
+console.log(jack.name); // Tom
+```
+
+```typescript
+// private
+class Animal2 {
+  private name;
+  public constructor(name) {
+    this.name = name;
+  }
+}
+
+let jack2 = new Animal2("Jack");
+console.log(jack2.name); //私有name,只能类中访问
+jack2.name = "Tom";
+```
+
+如果是用 protected 修饰，则允许在子类中访问：
+
+```typescript
+// protected
+class Animal {
+  protected name;
+  public constructor(name) {
+    this.name = name;
+  }
+}
+
+class Cat extends Animal {
+  constructor(name) {
+    super(name);
+    console.log(this.name);
+  }
+}
+```
+
+当构造函数修饰为 private 时，该类不允许被继承或者实例化：
+
+```typescript
+class Animal {
+  public name;
+  private constructor(name) {
+    this.name = name;
+  }
+}
+class Cat extends Animal {
+  constructor(name) {
+    super(name); // 错误: 父级构造函数修饰为 private,不能被继承
+  }
+}
+
+let a = new Animal("Jack"); // 错误: 父级构造函数修饰为 private,不能被实例化
+```
+
+当构造函数修饰为 protected 时，该类只允许被继承：
+
+```typescript
+class Animal {
+  public name;
+  protected constructor(name) {
+    this.name = name;
+  }
+}
+class Cat extends Animal {
+  constructor(name) {
+    super(name);
+  }
+}
+
+let a = new Animal("Jack"); // 报错:该类只能被继承
+```
+
+### 参数属性
+
+修饰符和 `readonly` 还可以使用在构造函数参数中，等同于类中定义该属性同时给该`属性赋值`，使代码更简洁。
+
+```typescript
+class Animal {
+  // public name: string;
+  public constructor(public name) {
+    // this.name = name;
+  }
+}
 ```
 
 ## 4.super 原理
 
-```typescript
+### 原理
 
+原型链继承： `TypeScript `通过原型链的机制让子类继承父类的属性和方法。`super` 允许子类显式调用父类的构造函数和方法。
+在` JavaScript` 中，每个对象都有一个内部的` [[Prototype]] 属性`指向它的父类，继承关系就是通过这个机制实现的。
+
+调用父类构造函数： 当你在子类中调用 `super()`，`JavaScript/TypeScript` 的内部机制会：
+
+查找父类的构造函数。
+调用父类的构造函数并传入参数。
+如果父类的构造函数有返回值，`super()` 会返回那个值。
+
+访问父类方法：
+使用 `super.method()`，`JavaScript` 会从子类的原型链向上查找，找到父类的 method 方法并执行它。
+
+```typescript
+class Parent {
+  name: string;
+  constructor(name: string) {
+    this.name = name;
+  }
+  greet() {
+    console.log(`Hello from ${this.name}`);
+  }
+}
+
+class Child extends Parent {
+  constructor(name: string) {
+    // 调用父类构造函数
+    super(name);
+  }
+  greet() {
+    console.log("This is the child speaking");
+    // 调用父类的 greet 方法
+    super.greet();
+  }
+}
+
+const child = new Child("Alice");
+child.greet();
 ```
+
+```typescript
+// 假设编译后的 JavaScript 代码，super 在 JavaScript 内部通过对父类的原型对象的引用来实现：
+function Parent(name) {
+  this.name = name;
+}
+
+Parent.prototype.greet = function () {
+  console.log(`Hello from ${this.name}`);
+};
+
+function Child(name) {
+  // .call作用于函数,相当于是将this指向Child,然后把name传给Parent函数,这样this.name就是子集传入的name
+  Parent.call(this, name); // 相当于 super(name)
+}
+
+Child.prototype = Object.create(Parent.prototype); // 继承父类的原型链
+Child.prototype.constructor = Child; //修复 Child 构造函数的 constructor 属性指向。
+
+Child.prototype.greet = function () {
+  console.log("This is the child speaking");
+  Parent.prototype.greet.call(this); // 相当于 super.greet()
+};
+
+const child = new Child("Alice");
+child.greet();
+```
+
+### .call()
+
+在 JavaScript 中，`.call()` 是 `Function` 对象的一个方法，它可以用来调用一个函数，并且显式地指定 `this` 的值和参数。
+
+#### **call() 的作用：**
+
+1. **改变函数执行时的 this 指向**：通过 `call()`，你可以在调用一个函数时，显式指定该函数内部的 `this` 指向某个特定的对象。
+2. **传递参数**：`call()` 方法允许你逐个传递参数，而不是通过数组传递参数（这是 `apply()` 的区别）。
+
+#### **call() 方法的语法：**
+
+```javascript
+functionName.call(thisArg, arg1, arg2, ...)
+```
+
+- **functionName**：你要调用的函数。
+- **thisArg**：指定函数执行时的 `this` 值。它可以是任何值（对象、数组、原始类型等）。如果你传递 `null` 或 `undefined`，那么 `this` 将默认指向全局对象（在严格模式下则为 `undefined`）。
+- **arg1, arg2, ...**：这些是你想要传递给函数的参数，可以逐个传递。
+
+#### **例子：**
+
+```javascript
+function greet() {
+  console.log(`Hello, ${this.name}`);
+}
+
+const person = {
+  name: "Alice",
+};
+
+// 使用 call 改变 this 的指向
+greet.call(person); // 输出: Hello, Alice
+```
+
+在这个例子中，`greet.call(person)` 调用了 `greet` 函数，同时将函数的 `this` 指向了 `person` 对象，因此在函数中 `this.name` 实际上访问的是 `person.name`。
 
 ## 5.静态方法 static
 
-```typescript
+使用 static 修饰符修饰的方法称为静态方法，它们不需要实例化，而是直接通过类来调用：
 
+```typescript
+class Animal4 {
+  public constructor() {}
+  static printName() {
+    console.log("Animal4");
+  }
+}
+console.log(Animal4.printName); //Animal4
 ```
 
 ## 6.get set
 
-```typescript
+使用 `getter` 和 `setter` 可以改变属性的赋值和读取行为：
 
+注意 get set 的函数 可以通过属性访问的方式调用,且 get set 函数名必须相同
+
+```typescript
+class Animal5 {
+  constructor(name: string) {
+    this.name = name; // name()可以通过属性访问的方式调用  this.name  === > this.name()
+  }
+  get name() {
+    return "Jack";
+  }
+  set name(value) {
+    console.log("setter: " + value);
+  }
+}
+let val = new Animal5("Kitty"); // setter: Kitty
+console.log(val.name); //getter    Jack
+val.name = "Tom"; // setter: Tom
 ```
 
 ## 7.抽象类 abstract
 
+什么是抽象类？
+首先，抽象类是不允许被实例化的
+其次，抽象类中的抽象方法必须被子类实现
+
 ```typescript
 
+```
+
+什么是抽象方法?
+所定义的方法,都只能描述不能进行一个实现
+
+```typescript
+abstract class BaseClass {
+  name: string;
+
+  constructor(name: string) {
+    this.name = name;
+  }
+
+  abstract init(name: string): void;
+
+  getName() {
+    return this.name;
+  }
+}
+
+// 抽象类不能实例化
+// new BaseClass()
+
+// 用途: 顶层设计,作为基类,供派生类继承
+
+class A extends BaseClass {
+  constructor() {
+    super("Tom");
+  }
+  init(name: string): void {}
+
+  setName(name: string) {
+    this.name = name; //super父类实例化后能够拿到所有属性和方法
+  }
+}
+
+const v = new A();
+v.setName("Jack");
+
+console.log(v.getName()); //Jack
 ```
