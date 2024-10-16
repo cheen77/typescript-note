@@ -1340,3 +1340,88 @@ let success: number = Types3.success;
 let key: string = Types3[success];
 console.log(`key--------${key}`, `value--------${success}`); // key--------success value--------0
 ```
+
+# 12.类型推论|类型别名
+
+## 1.类型推论
+
+如果没有明确的指定类型，那么 TypeScript 会依照类型推论（Type Inference）的规则推断出一个类型。
+
+## 2.类型别名
+
+`type` 关键字（可以给一个类型定义一个名字）多用于复合类型
+
+## 1. 定义类型别名
+
+```typescript
+type str = string;
+
+let s: str = "aaa";
+
+console.log(s);
+```
+
+## 2. 定义函数别名
+
+```typescript
+type str = () => string;
+
+let s: str = () => "aaa";
+
+console.log(s);
+```
+
+## 3. 定义联合类型别名
+
+```typescript
+type str = string | number;
+
+let s: str = 123;
+
+let s2: str = "123";
+
+console.log(s, s2);
+```
+
+## 4. 定义值的别名
+
+```typescript
+type value = boolean | 0 | "213";
+
+let s: value = true;
+//变量s的值  只能是上面value定义的值
+```
+
+## 5.type 和 interface 区别
+
+- 1.interface 可以继承 type 只能通过 & 交叉类型合并
+- 2.type 可以定义 联合类型 和 可以使用一些操作符 interface 不行
+- 3.interface 遇到重名的会合并 type 不行
+
+## 6.type 高级用法
+
+type 中 extends 是包含的意思
+左边的值 会作为 右边类型的子类型
+
+1.  any unknow
+2.  Object
+3.  Number String ...
+4.  number string ....
+5.  never
+
+```typescript
+type a1 = 1 extends number ? 1 : 0; //1
+
+type a2 = 1 extends Number ? 1 : 0; //1
+
+type a3 = 1 extends Object ? 1 : 0; //1
+
+type a4 = 1 extends any ? 1 : 0; //1
+
+type a5 = 1 extends unknow ? 1 : 0; //1
+
+type a6 = 1 extends never ? 1 : 0; //0
+```
+
+# 13. never 类型
+
