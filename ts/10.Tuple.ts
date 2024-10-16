@@ -5,6 +5,8 @@ array[0].length // 报错 类型“number”上不存在属性“length”。
 array[1].length
 
 
+
+
 // 越界元素
 array.push(null) //报错 类型“null”的参数不能赋给类型“string | number | undefined”的参数
 
@@ -29,3 +31,5 @@ let excel: [string, string, number, string][] = [
 
 
 let array3: readonly [number, string, undefined] = [1, "ddd", undefined]
+
+type firstType = typeof array3[0]

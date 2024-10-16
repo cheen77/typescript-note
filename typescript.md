@@ -1244,4 +1244,99 @@ let excel: [string, string, number, string][] = [
 ];
 
 let array3: readonly [number, string, undefined] = [1, "ddd", undefined];
+type firstType = (typeof array3)[0];
+```
+
+# 11 枚举类型
+
+在 `javaScript` 中是没有枚举的概念的` TS` 帮我们定义了枚举`Enum`这个类型
+
+## 1.数字枚举
+
+```typescript
+//1.数字枚举
+// 默认从0往上
+enum Color {
+  Red,
+  Green,
+  BLue,
+}
+
+// 增长枚举
+enum Color2 {
+  Red = 1,
+  Green,
+  BLue,
+}
+```
+
+## 2.字符串枚举
+
+```typescript
+// 2.字符串枚举
+
+enum Color3 {
+  Red = "red",
+  Green = "green",
+  BLue = "blue",
+}
+```
+
+## 3.异构枚举
+
+```typescript
+// 3.异构枚举
+// 枚举可以混合字符串和数字成员
+enum Types {
+  No = "No",
+  Yes = 1,
+}
+```
+
+## 4.接口枚举
+
+```typescript
+// 4.接口枚举
+// 定义一个枚举Types 定义一个接口A 他有一个属性red 值为Types.yyds
+// 声明对象的时候要遵循这个规则
+
+enum Types {
+  yyds,
+  dddd,
+}
+interface A_ {
+  red: Types.yyds;
+}
+
+let obj1: A_ = {
+  red: Types.yyds,
+};
+```
+
+## 5.const 枚举
+
+```typescript
+const enum Types2 {
+  No = "No",
+  Yes = 1,
+}
+```
+
+常数枚举与普通枚举的区别是，它会在编译阶段被删除，并且不能包含计算成员。
+为了避免在额外生成的代码上的开销和额外的非直接的对枚举成员的访问，我们可以使用 const 枚举
+
+## 6.反向映射
+
+它包含了正向映射（ name -> value）和反向映射（ value -> name）
+
+要注意的是 不会为`字符串枚举成员`生成反向映射。
+
+```typescript
+enum Types3 {
+  success,
+}
+
+let success: number = Types3.success;
+let key: string = Types3[success];
+console.log(`key--------${key}`, `value--------${success}`); // key--------success value--------0
 ```
