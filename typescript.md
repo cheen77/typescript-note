@@ -1795,3 +1795,110 @@ let cchen: CHEN<string> = {
   msg: "chen",
 };
 ```
+
+## 泛型约束 extends
+
+在函数内部使用泛型变量的时候，由于事先不知道它是哪种类型，所以不能随意的操作它的属性或方法：
+
+```typescript
+function addN<T extends number>(a: T, b: T) {
+  return a + b;
+}
+```
+
+```typescript
+interface Lengthwise {
+  length: number;
+}
+
+function loggingIdentity<T extends Lengthwise>(arg: T): T {
+  console.log(arg.length);
+  return arg;
+}
+
+loggingIdentity("ggg");
+```
+
+多个类型参数之间也可以互相约束
+
+```typescript
+function copyFields<T extends U, U>(target: T, source: U): T {
+  for (let id in source) {
+    target[id] = (<T>source)[id];
+  }
+  return target;
+}
+
+let x = { a: 1, b: 2, c: 3, d: 4 };
+
+copyFields(x, { b: 10, d: 20 });
+// 我们使用了两个类型参数，其中要求 T 继承 U，这样就保证了 U 上不会出现 T 中不存在的字段。
+```
+
+```typescript
+//  结合 keyof 实现 Obj1. 智能提示
+let Obj1 = {
+  name: "Tom",
+  age: 16,
+};
+
+type Key = keyof typeof Obj1;
+
+// 实现 Obj1. 智能提示、
+
+// 首先定义了T类型并使用extends关键字继承object类型的子类型
+// 然后使用keyof操作符获取T类型的所有键，它的返回 类型是联合 类型
+// 最后利用extends关键字约束 K类型必须为keyof T联合类型的子类型
+function Ob<T extends object, K extends keyof T>(obj: T, key: K) {
+  return obj[key];
+}
+
+Ob(Obj1, "name");
+```
+
+## 泛型工具之 keyof
+
+keyof T 表示类型 T 上所有键的联合类型
+
+### 如何获取对象的属性
+
+```typescript
+let Obj1 = {
+  name: "Tom",
+  age: 16,
+};
+
+type Key = keyof typeof Obj1; //type Key = "name" | "age"
+```
+
+### 如何获取对象的属性值类型
+
+```typescript
+let Obj1 = {
+  name: "Tom",
+  age: 16,
+};
+
+type Value = (typeof Obj1)[keyof typeof Obj1]; //type Value = string | number
+```
+
+### 实现一个 Partial
+
+Partial 就是将属性全部变成可选
+
+```typescript
+interface Ddata {
+  name: string;
+  age: number;
+  sex: string;
+}
+
+type Ddata1 = Partial<Ddata>;
+
+// for in    for(let key in obj)
+type MyPartial<T extends object> = {
+  [key in keyof T]?: T[key];
+};
+
+type Ddata2 = MyPartial<Ddata>;
+```
