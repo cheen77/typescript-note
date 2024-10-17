@@ -123,6 +123,11 @@ let Obj1 = {
 type Key = keyof typeof Obj1 //type Key = "name" | "age"
 type Value = (typeof Obj1)[keyof typeof Obj1]; //type Value = string | number
 
+// keyof 用于 interface Obj {}    
+//  keyof typeof用于 具体的 const  Obj = {}  
+
+
+
 // 实现 Obj1. 智能提示、
 
 // 首先定义了T类型并使用extends关键字继承object类型的子类型
@@ -151,4 +156,19 @@ type MyPartial<T extends object> = {
 
 }
 
-type Ddata2 = MyPartial<Ddata> 
+type Ddata2 = MyPartial<Ddata>
+
+
+// 泛型类
+class C<T> {
+    value!: T;
+    add!: (x: T, y: T) => T;
+}
+
+let foo = new C<number>();
+
+foo.value = 0;
+foo.add = function (x, y) {
+    return x + y;
+};
+
