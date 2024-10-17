@@ -1748,3 +1748,50 @@ let [w, y, z] = Arr;
 let copy = [...Arr];
 console.log(w, y, z);
 ```
+
+# 16 泛型
+
+泛型（Generics）是指在定义函数、接口或类的时候，不预先指定具体的类型，而在使用的时候再指定类型的一种特性。也叫 动态类型
+
+## 泛型函数
+
+```typescript
+function chen(a: number, b: number): Array<number> {
+  return [a, b];
+}
+chen(1, 2);
+function chen1(a: string, b: string): Array<string> {
+  return [a, b];
+}
+chen1("独孤", "求败");
+
+// 这俩函数功能一样，如果写多个函数显然是一个不好的选择，我们可以：
+
+function chen3<T>(a: T, b: T): Array<T> {
+  return [a, b];
+}
+// chen3<number>(1, 2) //这是全称，但是没必要，因为ts会类型推断为number
+chen3(1, 2);
+chen3("ggg", "bbb");
+
+// 可以定义多个泛型
+function chen4<T, K>(a: T, b: K): Array<T | K> {
+  return [a, b];
+}
+
+chen4("ggg", 111);
+```
+
+## type interface 泛型
+
+```typescript
+type MMM<T> = string | T;
+let mmm: MMM<boolean> = true;
+
+interface CHEN<T> {
+  msg: T;
+}
+let cchen: CHEN<string> = {
+  msg: "chen",
+};
+```
