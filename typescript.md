@@ -2700,6 +2700,343 @@ class Http5 {
 new Http5();
 ```
 
+# 24. webpack 构建 ts+vue3 项目
+
+## 1.生成配置文件
+
+```typescript
+//生成项目配置文件
+npm init -y
+
+// 生成tsconfig.json文件
+tsc -init
+```
+
+## 2.创建`.gitignore`文件
+
+```
+node_modules
+```
+
+## 3.创建`index.html`文件
+
+## 4.创建 `src`目录
+
+- main.ts
+- App.vue
+- index.d.ts
+
+## 5.修改`tsconfig.json`文件
+
+添加一段代码：
+目的是 ts 校验 src 目录下
+
+```json
+  "include": ["src/**/*"]
+```
+
+## 6.创建`webpack.config.js`文件
+
+安装 `webpack` 依赖包
+
+```
+npm i  webpack webpack-cli -D
+
+npm install webpack-dev-server -D
+```
+
+## 7.添加`package.json`中`scripts`命令
+
+```json
+    "dev": "webpack-dev-server",
+    "build": "webpack"
+```
+
+## 8.编写`webpack.config.js` 配置文件测试打包
+
+```javascript
+const { Configuration } = require("webpack");
+const path = require("path");
+/**
+ * @type {Configuration}
+ */
+const config = {
+  mode: "development", //开发模式
+  entry: "./src/main.ts", //入口文件
+  output: {
+    path: path.resolve(__dirname, "dist"), //输出目录
+    filename: "bundle.js", //打包之后的文件名
+  },
+};
+
+// webpack是基于node环境,遵循commonJs规范
+module.exports = config;
+```
+
+`main.ts`加一段测试代码
+
+```
+let a = 2
+```
+
+```
+npm run build
+```
+
+## 9.支持 typescript
+
+记住: `文件相关`的问题用`loader依赖`解决
+
+```typescript
+npm install ts-loader -D
+npm install typescript -D
+```
+
+添加代码到`webpack.config.js`中 config
+
+```javascript
+  module: {
+    rules: [
+      {
+        test: /\.ts$/,
+        use: "ts-loader",
+        exclude: /node_modules/,
+      },
+    ],
+  },
+```
+
+## 10.支持 vue
+
+### 1.解析 html 文件
+
+```javascript
+npm install vue
+npm install html-webpack-plugin -D
+```
+
+inde.html
+
+```html
+<!-- 挂载点 html与webpack关联需要html-webpack-plugin -->
+<div id="app"></div>
+```
+
+`App.vue` 写一些测试代码，发现`npm run dev`报错
+
+```vue
+<template>
+  <div>123</div>
+</template>
+
+<script setup></script>
+```
+
+### 2.解析 vue 文件
+
+此时我们需要安装`vue-loader`解析 vue 文件
+
+```javascript
+npm install vue-loader -D
+```
+
+添加 loader 到`webpack.config.js`中 config
+
+```javascript
+
+module: {
+    rules: [
+      {
+        test: /\.ts$/, //以ts结尾文件
+        use: "ts-loader", //使用ts-loader处理ts文件
+        exclude: /node_modules/,
+      },
+      {
+        test: /\.vue$/,
+        use: "vue-loader",
+      },
+    ],
+  },
+```
+
+然后运行 `npm run dev`发现还是会报错` ERROR in ./src/App.vue`,它不认识.vue 结尾文件声明
+
+### 3.添加声明
+
+index.d.ts
+
+```typescript
+// 让ts认识.vue
+declare module "*.vue" {
+  import { DefineComponent } from "vue";
+  const component: DefineComponent<{}, {}, any>;
+  export default component;
+}
+```
+
+### 4.添加插件`VueLoaderPlugin`支持 vue3
+
+发现还是报错，`vue-loader was used without the corresponding plugin. Make sure to include VueLoaderPlugin in your webpack config.`
+让你使用`VueLoaderPlugin`支持 `vue3`
+
+添加 `const { VueLoaderPlugin } = require('vue-loader')` 到 `webpack.config.js`中
+
+```Javascript
+const { VueLoaderPlugin } = require('vue-loader')
+
+  plugins: [
+    //webpack的插件都是类 需要new
+    new VueLoaderPlugin(),
+    new HtmlWepackPlugin({
+      template: "./src/index.html",
+    }),
+  ],
+```
+
+此时我们`npm run dev`就可以正常运行了
+App.vue
+
+```
+<template>
+    <div>{{ x }}</div>
+    <button @click="add">+</button>
+</template>
+
+<script setup>
+import { ref } from "vue";
+let x = ref(0)
+const add = () => {
+    x.value++
+}
+</script>
+```
+
+### 5.支持 vue 文件中的 ts
+
+如果我们加一个 lang = "ts"，
+发现又报错了`VM314 App.vue:3 Uncaught ReferenceError: Cannot access '__WEBPACK_DEFAULT_EXPORT__' before initialization`
+
+那是因为在 `webpack.config.js`中
+
+```javascript
+  module: {
+    rules: [
+      {
+        test: /\.ts$/, //以ts结尾文件
+        use: "ts-loader", //使用ts-loader处理ts文件
+        exclude: /node_modules/,
+      },
+      {
+        test: /\.vue$/,
+        use: "vue-loader",
+      },
+    ],
+  },
+```
+
+我们只配置了 ts 文件的 ts 解析，但是 vue 文件中的 ts 我们并没有解析，可以增加一个 options 配置项
+
+```javascript
+  module: {
+    rules: [
+          {
+        test: /\.ts$/, //以ts结尾文件
+        use: {
+          loader: "ts-loader", //使用ts-loader处理ts文件
+          options: {
+            appendTsSuffixTo: [/\.vue$/], //ts-loader库中查阅
+          },
+        },
+        exclude: /node_modules/,
+      },
+      {
+        test: /\.vue$/,
+        use: "vue-loader",
+      },
+    ],
+  },
+```
+
+### 6.支持 css less sass
+
+#### 1.css
+
+安装依赖
+
+```javascript
+npm install css-loader style-loader  -D
+```
+
+`webpack.config.js`
+
+```javascript
+module: {
+    rules: [
+      {
+        test: /\.ts$/, //以ts结尾文件
+        use: {
+          loader: "ts-loader", //使用ts-loader处理ts文件
+          options: {
+            appendTsSuffixTo: [/\.vue$/], //ts-loader库中查阅
+          },
+        },
+        exclude: /node_modules/,
+      },
+      {
+        test: /\.vue$/,
+        use: "vue-loader",
+      },
+      {
+        test: /\.css$/,
+        use: ["style-loader", "css-loader"], //规则 从右向左解析 先解析css-loader 再将解析结果交给 style-loader通过js动态插入到标签
+      },
+    ],
+  },
+```
+
+#### 2.less /sass
+
+安装依赖
+
+```javascript
+npm install css-loader style-loader less less-loader sass sass-loader -D
+```
+
+`webpack.config.js`
+
+```javascript
+  module: {
+    rules: [
+      {
+        test: /\.ts$/, //以ts结尾文件
+        use: {
+          loader: "ts-loader", //使用ts-loader处理ts文件
+          options: {
+            appendTsSuffixTo: [/\.vue$/], //ts-loader库中查阅
+          },
+        },
+        exclude: /node_modules/,
+      },
+      {
+        test: /\.vue$/,
+        use: "vue-loader",
+      },
+      {
+        test: /\.css$/,
+        use: ["style-loader", "css-loader"], //规则 从右向左解析 先解析css-loader 再将解析结果交给 style-loader通过js动态插入到标签
+      },
+      {
+        test: /\.less$/,
+        use: ["style-loader", "css-loader", "less-loader"],
+      },
+      {
+        test: /\.sass$/,
+        use: ["style-loader", "css-loader", "sass-loader"],
+      },
+    ],
+  },
+```
+
 # xx. infer
 
 `infer`就是推导泛型参数
