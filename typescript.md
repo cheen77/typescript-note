@@ -2129,3 +2129,404 @@ type CoustomExtract<T, U> = T extends U ? T : never;
 
 type ExtractPerson = Extract<"name" | "age" | "sex", "age" | "like">;
 ```
+
+# 18.tsconfig.json 配置文件
+
+## 1.生成 tsconfig.json
+
+生成`tsconfig.json` 文件
+这个文件是通过 `tsc --init` 命令生成的
+
+配置详解
+
+```json
+"compilerOptions": {
+  "incremental": true, // TS编译器在第一次编译之后会生成一个存储编译信息的文件，第二次编译会在第一次的基础上进行增量编译，可以提高编译的速度
+  "tsBuildInfoFile": "./buildFile", // 增量编译文件的存储位置
+  "diagnostics": true, // 打印诊断信息
+  "target": "ES5", // 目标语言的版本
+  "module": "CommonJS", // 生成代码的模板标准
+  "outFile": "./app.js", // 将多个相互依赖的文件生成一个文件，可以用在AMD模块中，即开启时应设置"module": "AMD",
+  "lib": ["DOM", "ES2015", "ScriptHost", "ES2019.Array"], // TS需要引用的库，即声明文件，es5 默认引用dom、es5、scripthost,如需要使用es的高级版本特性，通常都需要配置，如es8的数组新特性需要引入"ES2019.Array",
+  "allowJS": true, // 允许编译器编译JS，JSX文件
+  "checkJs": true, // 允许在JS文件中报错，通常与allowJS一起使用
+  "outDir": "./dist", // 指定输出目录
+  "rootDir": "./", // 指定输出文件目录(用于输出)，用于控制输出目录结构
+  "declaration": true, // 生成声明文件，开启后会自动生成声明文件
+  "declarationDir": "./file", // 指定生成声明文件存放目录
+  "emitDeclarationOnly": true, // 只生成声明文件，而不会生成js文件
+  "sourceMap": true, // 生成目标文件的sourceMap文件
+  "inlineSourceMap": true, // 生成目标文件的inline SourceMap，inline SourceMap会包含在生成的js文件中
+  "declarationMap": true, // 为声明文件生成sourceMap
+  "typeRoots": [], // 声明文件目录，默认时node_modules/@types
+  "types": [], // 加载的声明文件包
+  "removeComments":true, // 删除注释
+  "noEmit": true, // 不输出文件,即编译后不会生成任何js文件
+  "noEmitOnError": true, // 发送错误时不输出任何文件
+  "noEmitHelpers": true, // 不生成helper函数，减小体积，需要额外安装，常配合importHelpers一起使用
+  "importHelpers": true, // 通过tslib引入helper函数，文件必须是模块
+  "downlevelIteration": true, // 降级遍历器实现，如果目标源是es3/5，那么遍历器会有降级的实现
+  "strict": true, // 开启所有严格的类型检查
+  "alwaysStrict": true, // 在代码中注入'use strict'
+  "noImplicitAny": true, // 不允许隐式的any类型
+  "strictNullChecks": true, // 不允许把null、undefined赋值给其他类型的变量
+  "strictFunctionTypes": true, // 不允许函数参数双向协变
+  "strictPropertyInitialization": true, // 类的实例属性必须初始化
+  "strictBindCallApply": true, // 严格的bind/call/apply检查
+  "noImplicitThis": true, // 不允许this有隐式的any类型
+  "noUnusedLocals": true, // 检查只声明、未使用的局部变量(只提示不报错)
+  "noUnusedParameters": true, // 检查未使用的函数参数(只提示不报错)
+  "noFallthroughCasesInSwitch": true, // 防止switch语句贯穿(即如果没有break语句后面不会执行)
+  "noImplicitReturns": true, //每个分支都会有返回值
+  "esModuleInterop": true, // 允许export=导出，由import from 导入
+  "allowUmdGlobalAccess": true, // 允许在模块中全局变量的方式访问umd模块
+  "moduleResolution": "node", // 模块解析策略，ts默认用node的解析策略，即相对的方式导入
+  "baseUrl": "./", // 解析非相对模块的基地址，默认是当前目录
+  "paths": { // 路径映射，相对于baseUrl
+    // 如使用jq时不想使用默认版本，而需要手动指定版本，可进行如下配置
+    "jquery": ["node_modules/jquery/dist/jquery.min.js"]
+  },
+  "rootDirs": ["src","out"], // 将多个目录放在一个虚拟目录下，用于运行时，即编译后引入文件的位置可能发生变化，这也设置可以虚拟src和out在同一个目录下，不用再去改变路径也不会报错
+  "listEmittedFiles": true, // 打印输出文件
+  "listFiles": true// 打印编译的文件(包括引用的声明文件)
+}
+
+// 指定一个匹配列表（属于自动指定该路径下的所有ts相关文件）
+"include": [
+   "src/**/*"
+],
+// 指定一个排除列表（include的反向操作）
+ "exclude": [
+   "demo.ts"
+],
+// 指定哪些文件使用该配置（属于手动一个个指定文件）
+ "files": [
+   "demo.ts"
+]
+```
+
+# 19.namespace 命名空间
+
+我们在工作中无法避免`全局变量`造成的污染，`TypeScript`提供了`namespace `避免这个问题出现
+
+## 1.命名空间的用法 嵌套 抽离 导出 简化 合并
+
+namespace 所有的变量以及方法必须导出才能访问，嵌套时内层 namespace 也需要导出
+
+```typescript
+// 1.命名空间的用法 嵌套 抽离 导出 简化 合并
+export namespace Test {
+  export interface A {
+    name: string;
+    age: number;
+  }
+  export namespace ChildTest {
+    export const add = () => [1, 2];
+  }
+}
+
+{
+  let tom: Test.A = {
+    name: "Tom",
+    age: 15,
+  };
+  console.log(Test.ChildTest.add()); // [1,2]
+}
+
+//========
+
+import { Test } from "./19.namespace";
+
+import add = Test.ChildTest.add; //抽离
+
+{
+  let tom: Test.A = {
+    name: "Tom",
+    age: 15,
+  };
+  console.log(add()); // [1,2]
+}
+```
+
+## 2.命名空间的案例
+
+```typescript
+// 跨端的项目 h5 android ios 小程序 等
+namespace ios {}
+namespace android {}
+namespace h5 {}
+namespace miniprogram {}
+```
+
+# 20.理解模块化
+
+前端模块化规范是有非常多的.
+
+在 es6 模块化规范之前有
+
+## 1.CommonJS -> Node.js
+
+```javascript
+// 导入
+require("xxx");
+require("../xxx.js");
+// 导出
+exports.xxxxxx = function () {};
+module.exports = xxxxx;
+```
+
+## 2.AMD -> requireJs
+
+```javascript
+// 定义
+define("module", ["dep1", "dep2"], function(d1, d2) {...});
+// 加载模块
+require(["module", "../app"], function(module, app) {...});
+```
+
+## 3.CMD -> seaJs
+
+```javascript
+define(function (require, exports, module) {
+  var a = require("./a");
+  a.doSomething();
+
+  var b = require("./b");
+  b.doSomething();
+});
+```
+
+## 4.UMD -> UMD 是 AMD 和 CommonJS 的糅合
+
+```javascript
+(function (window, factory) {
+  // 检测是不是 Nodejs 环境
+  if (typeof module === "object" && typeof module.exports === "objects") {
+    module.exports = factory();
+  }
+  // 检测是不是 AMD 规范
+  else if (typeof define === "function" && define.amd) {
+    define(factory);
+  }
+  // 使用浏览器环境
+  else {
+    window.eventUtil = factory();
+  }
+})(this, function () {
+  //module ...
+});
+```
+
+`es6 模块`化规范出来之后上面这些模块化规范就用的比较少了,基本上只是`nodejs`在使用 `CommonJS `规范
+
+现在主要使用 import export
+
+```typescript
+//20.modules.ts:
+// // 1.默认导出  导出的东西可以是任意类型
+export default [1];
+
+export const a = 1;
+
+export const add = (a: number, b: number) => a + b;
+
+// 也可以
+// const a = 1
+// const add = (a: number, b: number) => a + b
+// export {
+//     a,
+//     add
+// }
+
+//index.ts:
+import arr, { a, add as add2 } from "./20.modules";
+// 或者
+import * as data from "./20.modules";
+console.log(data); //{ a: 1, add: [Function: add], default: [ 1 ] }
+
+console.log(arr); // [ 1 ]
+
+const add = () => {};
+
+// 动态导入
+if (a === 1) {
+  import("./20.modules").then((res) => {
+    console.log(res); // a: 1, add: [Function: add], default: [ 1 ] }
+  });
+}
+```
+
+# 21.声明文件 d.ts
+
+声明文件 `declare`
+
+## 一个例子感受
+
+`express` 是用`js`写的， `axios` 是用 `ts` 写的
+
+```typescript
+//生成package.json
+npm init -y
+pnpm i express axios
+```
+
+你会发现 express 没有 d.ts 声明文件
+
+```typescript
+import axios from "axios";
+import express from "express"; //无法找到模块“express”的声明文件。
+//尝试使用 `npm i --save-dev @types/express` (如果存在)，
+// 或者添加一个包含 `declare module 'express';` 的新声明(.d.ts)文件
+
+// @types开头是规范
+```
+
+手动编写一个`express.d.ts`文件
+
+```typescript
+declare module "express" {
+  interface Router {
+    get(path: string, cb: (req: any, res: any) => void): void;
+  }
+
+  interface App {
+    use(path: string, router: any): void;
+    listen(port: number, cb?: () => void): void;
+  }
+
+  interface Express {
+    (): App;
+    Router(): Router;
+  }
+  const express: Express;
+  export default express;
+}
+```
+
+`21.declare.ts `文件：
+
+```typescript
+import axios from "axios";
+import express from "express"; //无法找到模块“express”的声明文件。
+//尝试使用 `npm i --save-dev @types/express` (如果存在)，
+// 或者添加一个包含 `declare module 'express';` 的新声明(.d.ts)文件
+// @types开头是规范
+
+// 但是有一个问题，如果遇到冷门库，恰好没有写ts的声明文件，那么只能自己写declare module 'xxx'
+
+// 这里我们以declare module 'express'为例子 新建一个express.d.ts声明文件
+
+const app = express();
+
+const router = express.Router();
+
+app.use("/api", router);
+
+router.get("/api", (res: any, req: any) => {
+  res.json({
+    code: 200,
+  });
+});
+
+app.listen(9001, () => {
+  console.log(`server is running at 9001`);
+});
+```
+
+# 22.Mixins 混入
+
+`TypeScript` 混入 `Mixins `,其实 `vue `也有` mixins` 这个东西 你可以把他看作为`合并`
+
+```typescript
+//Mixins可以理解成合并
+// 1，对象混入 合并 Am对象 Am对象 合并到一起
+// 2.类的混入 A类 B类 合并到一起
+
+//1.对象混入
+
+interface Am {
+  name: string;
+}
+
+interface Bm {
+  age: number;
+}
+
+let am: Am = { name: "a" };
+let bm: Bm = { age: 12 };
+
+//1. 扩展运算符  浅拷贝 返回新的类型 let cm: {age: number; name: string;}
+
+let cm = { ...am, ...bm }; //{ name: 'a', age: 12 }
+
+//2.es6  Object.assign  浅拷贝  返回交叉类型 let dm: Am & Bm
+let dm = Object.assign({}, am, bm); //{ name: 'a', age: 12 }
+
+//2.类混入
+
+class Html {
+  render() {
+    console.log("render");
+  }
+}
+
+class Logger {
+  log(log: string) {
+    console.log(log);
+  }
+}
+
+class App {
+  run() {}
+}
+// 如果我们希望 App作为基类，将Html,Logger类混入到App类中
+
+type Constructor<T = {}> = new (...args: any[]) => T;
+function MixinsPlugins<T extends Constructor<App>>(base: T) {
+  // 返回一个类
+  return class extends base {
+    private Logger;
+    private Html;
+
+    constructor(...args: any[]) {
+      super(...args);
+      this.Logger = new Logger();
+      this.Html = new Html();
+    }
+
+    run(): void {
+      this.log("run");
+    }
+
+    log(log: string): void {
+      this.Logger.log(log);
+    }
+
+    render(): void {
+      this.Html.render();
+    }
+  };
+}
+
+const mixins = MixinsPlugins(App); //返回的类就是App混入Html和Logger
+
+const app = new mixins();
+
+app.run(); //run
+app.render(); //render
+```
+
+
+
+
+
+
+
+
+
+
+# xx. infer
+
+`infer`就是推导泛型参数
+
+`infer` 声明只能出现在 `extends` 子语句中
