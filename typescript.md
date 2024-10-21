@@ -3422,9 +3422,182 @@ eventbus.emit("message", 3, false);
 
 # 26.weakMap，weakSet，set，map
 
+在` es5` 的时候常用的` Array` `object `，在` es6` 又新增了两个类型，`Set` 和 `Map`，类似于`数组`和`对象`。
 
+## 1.set
 
+### 定义
 
+`set `是由一组无序且唯一(即不能重复)的项组成的，可以想象成集合是一个既没有重复元素，也没有顺序概念的数组
+
+### 属性
+
+size：返回集合所包含的元素个数
+
+### 操作方法
+
+- add(value)：添加某个值，返回 Set 结构本身。
+
+- delete(value)：删除某个值，返回一个布尔值，表示删除是否成功。
+
+- has(value)：返回一个布尔值，表示该值是否为 Set 的成员。
+
+- clear()：清除所有成员，无返回值。
+
+- size: 返回 set 数据结构的数据长度
+
+### 实例
+
+```typescript
+// set 是一个元素唯一且无序的集合
+
+let set: Set<any> = new Set([1, 2, 3, 4, 5, 5, () => {}, () => {}]);
+console.log(set.size); // 7
+
+const cb = () => {};
+let set1: Set<any> = new Set([1, 2, 3, 4, 5, 5, cb, cb]);
+console.log(set1.size); // 6
+
+//天然去重，按照内存引用地址来进行唯一性判断，如果引用类型的内存引用地址相同，也可以去重
+
+/**
+ * 面试：为什么会出现上面的差别呢？ 为什么第一个() => { }, () => { }就打印 7  而第二个cb, cb就打印6呢？
+ *   在 JavaScript 中，Set 数据结构是用来存储唯一值的集合，即使是引用类型的值（如对象或函数），也会根据它们的内存引用地址来进行唯一性判断。
+ *   这意味着，如果两个回调函数引用同一个函数，即使它们是引用类型，也会被认为是重复的，而不会被添加多次。
+ */
+
+// 操作
+set.add(6);
+console.log(set); //{  1, 2, 3, 4, 5,  [Function (anonymous)], [Function (anonymous)] ,6 }
+console.log(set.has(7)); // 返回布尔值，false
+console.log(set.delete(6)); //返回布尔值，true
+// console.log(set.clear());// 清空，无返回值
+
+// set中有iterator方法，可以支持遍历    for of  forEach
+
+for (const iterator of set) {
+  console.log(iterator); // 1  2  3  4  5  [Function (anonymous)]  [Function (anonymous)]
+}
+
+set.forEach((iterator) => {
+  console.log(iterator); // 1  2  3  4  5  [Function (anonymous)]  [Function (anonymous)]
+});
+
+// 数组去重
+let arr = [...new Set([1, 1, 1, 2, 2, 3, 4, 5, 5, 5, 5])];
+
+console.log(arr); //[ 1, 2, 3, 4, 5 ]
+```
+
+### 遍历
+
+`set`中有 `iterator` 方法，可以支持遍历 `for of` ,`forEach`
+
+```typescript
+for (const iterator of set) {
+  console.log(iterator); // 1  2  3  4  5  [Function (anonymous)]  [Function (anonymous)]
+}
+
+set.forEach((iterator) => {
+  console.log(iterator); // 1  2  3  4  5  [Function (anonymous)]  [Function (anonymous)]
+});
+```
+
+### 数组去重
+
+```typescript
+let arr = [...new Set([1, 1, 1, 2, 2, 3, 4, 5, 5, 5, 5])];
+console.log(arr); //[ 1, 2, 3, 4, 5 ]
+```
+
+### 理解 set 去重
+
+在 `es6` 中，`Set` 数据结构是用来存储唯一值的集合，即使是引用类型的值（如对象或函数），也会根据它们的`内存引用地址`来进行`唯一性判断`。
+这意味着，如果两个回调函数引用同一个函数，即使它们是引用类型，也会被认为是重复的，而不会被添加多次。
+
+## 2.map
+
+### 定义
+
+类似于对象，也是`键值对的集合`，但是`键`的范围不限于`字符串`，`数字`，`symbol`，`各种类型的值（包括对象）`都可以当作键，是一种更完善的 Hash 结构实现。如果你需要`键值对`的数据结构，Map 比 Object 更合适
+
+### 属性
+
+size：返回集合所包含的元素个数
+
+### 操作方法
+
+- set(key,value)：添加某个键值,返回 Map 结构本身。
+
+- get(key)：获取某个值,返回一个对应 key 的值。
+
+- delete(value)：删除某个值，返回一个布尔值，表示删除是否成功。
+
+- has(value)：返回一个布尔值，表示该值是否为 Map 的成员。
+
+- clear()：清除所有成员，无返回值。
+
+- size: 返回 set 数据结构的数据长度
+
+```typescript
+//map的key可以是引用类型
+let obj = { name: "chen" };
+let map: Map<object, any> = new Map();
+map.set(obj, "chen");
+console.log(map); //{ { name: 'chen' } => 'chen' }
+
+console.log(map.get(obj)); //chen
+console.log(map.size); //1
+
+console.log(map.has(obj)); //true
+
+console.log(map.delete(obj)); //true
+
+map.clear();
+```
+
+### 遍历
+
+```typescript
+for (const iterator of map) {
+  console.log(iterator); // [ { name: 'chen' }, 'chen' ]
+}
+
+map.forEach((value, key) => {
+  console.log(key, value); //{ name: 'chen' } chen
+});
+```
+
+## 3.weakSet 和 weakMap
+
+`Weak` 在英语的意思就是`弱`的意思，`weakSet` 和 `weakMap` 的`键`都是弱引用，不会被计入垃圾回收
+
+`weakSet` 和 `weakMap` 的`key`都只能存放`引用类型`，不能存放基本类型，所以 `weakSet` 和 `weakMap` 都是弱引用，不会被计入垃圾回收。
+
+```typescript
+//`Weak` 在英语的意思就是`弱`的意思，`weakSet` 和 `weakMap` 的`键`都是弱引用，不会被计入垃圾回收
+
+//weakMap 的key 只能是引用类型
+
+// 演示垃圾回收计数
+let obj: any = { name: "小满zs" }; //计数 1
+let aahph: any = obj; //2
+let wmap: WeakMap<object, string> = new WeakMap();
+
+wmap.set(obj, "111111"); //2 他的键是弱引用不会计数的
+
+obj = null; // -1
+aahph = null; //-1
+//v8 GC 不稳定 最少200ms
+
+setTimeout(() => {
+  console.log(wmap);
+}, 500);
+
+/**
+ * 首先obj引用了这个对象 + 1，aahph也引用了 + 1，wmap也引用了，但是不会  + 1，应为他是弱引用，不会计入垃圾回收，因此 obj 和 aahph 释放了该引用 weakMap 也会随着消失的，但是有个问题你会发现控制台能输出，值是取不到的，应为V8的GC回收是需要一定时间的，你可以延长到500ms看一看，并且为了避免这个问题不允许读取键值，也不允许遍历，同理weakSet 也一样
+ */
+```
 
 # xx. infer
 
