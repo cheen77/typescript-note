@@ -3030,12 +3030,401 @@ npm install css-loader style-loader less less-loader sass sass-loader -D
         use: ["style-loader", "css-loader", "less-loader"],
       },
       {
-        test: /\.sass$/,
+        test: /\.scss$/,
         use: ["style-loader", "css-loader", "sass-loader"],
       },
     ],
   },
 ```
+
+`App.vue`
+
+```vue
+<template>
+  <div>{{ x }}</div>
+  <button @click="add">+</button>
+</template>
+
+<script setup lang="ts">
+import { ref } from "vue";
+let x = ref<number>(0);
+const add = () => {
+  x.value++;
+};
+</script>
+
+<!-- <style>
+body {
+    background-color: pink;
+}
+</style> -->
+
+<!-- <style lang="less">
+@red: pink;
+
+html,
+body {
+    background-color: @red;
+}
+</style> -->
+
+<style lang="scss">
+$red: pink;
+
+html,
+body {
+  background-color: $red;
+}
+</style>
+```
+
+## 11.打包后 js 分包
+
+### 1.目前问题
+
+当我们安装第三方库，比如 `element-plus`、`dayjs`、`axios`等，目前打包后会默认放到配置项设置的`bundle.js`文件中，js 文件会特别臃肿，体积也会特别大，此时我们需要采用`webpack`的分包，将第三方的依赖拆分出来。
+
+我们以 axios 为例子
+
+```
+npm install axios
+```
+
+### 2.配置`webpack.config.js`
+
+```javascript
+const config = {
+  mode: "development", //开发模式
+  entry: "./src/main.ts", //入口文件
+  output: {
+    path: path.resolve(__dirname, "dist"), //输出目录
+    filename: "[chunkhash].js", //打包之后的文件名
+    clean: true, //清空打包的结果
+  },
+  //分包
+  optimization: {
+    splitChunks: {
+      cacheGroups: {
+        axios: {
+          name: "axios",
+          test: /[\\/]node_modules[\\/]axios[\\/]/,
+          chunks: "all",
+        },
+        commons: {
+          //拆分公共依赖
+          name: "commons",
+          chunks: "all",
+          minChunks: 2,
+        },
+      },
+    },
+  },
+  module: {
+    rules: [
+      {
+        test: /\.ts$/, //以ts结尾文件
+        use: {
+          loader: "ts-loader", //使用ts-loader处理ts文件
+          options: {
+            appendTsSuffixTo: [/\.vue$/], //ts-loader库中查阅
+          },
+        },
+        exclude: /node_modules/,
+      },
+      {
+        test: /\.vue$/,
+        use: "vue-loader",
+      },
+      {
+        test: /\.css$/,
+        use: ["style-loader", "css-loader"], //规则 从右向左解析 先解析css-loader 再将解析结果交给 style-loader通过js动态插入到标签
+      },
+      {
+        test: /\.less$/,
+        use: ["style-loader", "css-loader", "less-loader"],
+      },
+      {
+        test: /\.scss$/,
+        use: ["style-loader", "css-loader", "sass-loader"],
+      },
+    ],
+  },
+  plugins: [
+    //webpack的插件都是类 需要new
+    new HtmlWepackPlugin({
+      template: "./index.html",
+    }),
+    new VueLoaderPlugin(),
+  ],
+  stats: "errors-only", //控制台 报错显示
+};
+```
+
+## 3.css 文件单独提取
+
+当前我们打包以后，其实`css`是通过`js`动态插入标签的，但是这样效率会比较低，我们希望通过`link`标签导入`css文件`，如果用 webpack 做到呢？
+
+安装依赖
+
+```
+npm install mini-css-extract-plugin -D
+```
+
+配置`webpack.config.js`
+
+```javascript
+const { Configuration } = require("webpack");
+const path = require("path");
+
+const HtmlWepackPlugin = require("html-webpack-plugin"); //插件 实现html文件和webpack的关联
+const { VueLoaderPlugin } = require("vue-loader"); //vue3
+
+const MimiCssExtractPlugin = require("mini-css-extract-plugin"); //css文件抽离
+// 注解 有代码提示
+/**
+ * @type {Configuration}
+ */
+const config = {
+  mode: "development", //开发模式
+  entry: "./src/main.ts", //入口文件
+  output: {
+    path: path.resolve(__dirname, "dist"), //输出目录
+    filename: "[chunkhash].js", //打包之后的文件名
+    clean: true, //清空打包的结果
+  },
+  //分包
+  optimization: {
+    splitChunks: {
+      cacheGroups: {
+        axios: {
+          name: "axios",
+          test: /[\\/]node_modules[\\/]axios[\\/]/,
+          chunks: "all",
+        },
+        commons: {
+          //拆分公共依赖
+          name: "commons",
+          chunks: "all",
+          minChunks: 2,
+        },
+      },
+    },
+  },
+  module: {
+    rules: [
+      {
+        test: /\.ts$/, //以ts结尾文件
+        use: {
+          loader: "ts-loader", //使用ts-loader处理ts文件
+          options: {
+            appendTsSuffixTo: [/\.vue$/], //ts-loader库中查阅
+          },
+        },
+        exclude: /node_modules/,
+      },
+      {
+        test: /\.vue$/,
+        use: "vue-loader",
+      },
+      // {
+      //   test: /\.css$/,
+      //   use: ["style-loader", "css-loader"], //规则 从右向左解析 先解析css-loader 再将解析结果交给 style-loader通过js动态插入到标签
+      // },
+      // {
+      //   test: /\.less$/,
+      //   use: ["style-loader", "css-loader", "less-loader"],
+      // },
+      // {
+      //   test: /\.sass$/,
+      //   use: ["style-loader", "css-loader", "sass-loader"],
+      // },
+      {
+        test: /\.css$/, //不需要style-loader了，因为我们要提取css文件
+        use: [MimiCssExtractPlugin.loader, "css-loader"], //规则 从右向左解析 先解析css-loader 再将解析结果交给 style-loader通过js动态插入到标签
+      },
+      {
+        test: /\.less$/,
+        use: [MimiCssExtractPlugin.loader, "css-loader", "less-loader"],
+      },
+      {
+        test: /\.scss$/,
+        use: [MimiCssExtractPlugin.loader, "css-loader", "sass-loader"],
+      },
+    ],
+  },
+  plugins: [
+    //webpack的插件都是类 需要new
+    new HtmlWepackPlugin({
+      template: "./index.html",
+    }),
+    new VueLoaderPlugin(),
+
+    new MimiCssExtractPlugin(),
+  ],
+  stats: "errors-only", //控制台 报错显示
+};
+
+// webpack是基于node环境,遵循commonJs规范
+module.exports = config;
+```
+
+此时就大功告成了，我们打包以后，css 文件已经单独抽离出来了，并且已经通过`link`标签引入了。
+
+# 25.实战 TS 编写发布订阅模式
+
+`发布订阅模式`是一种常见的设计模式。
+
+## 1.通过 Map<订阅名称,[callbackList]>去写发布订阅模式
+
+```typescript
+// 实现on emit once off 订阅中心Map<事件名称,[Function]订阅者集合>
+interface BaseEventBus {
+  events: Map<string, Function[]>; //订阅中心Map
+  once: (event: string, callback: Function) => void; //订阅一次
+  on: (event: string, callback: Function) => void; //订阅
+  emit: (event: string, ...args: any[]) => void; //派发
+  off: (event: string, callback: Function) => void; //删除监听器
+}
+
+class EventBus implements BaseEventBus {
+  events: Map<string, Function[]>;
+  constructor() {
+    this.events = new Map();
+  }
+
+  on(event: string, callback: Function): void {
+    // 证明存过了
+    if (this.events.has(event)) {
+      const callbackList = this.events.get(event);
+      callbackList && callbackList.push(callback);
+    } else {
+      // 第一次存
+      this.events.set(event, [callback]);
+    }
+  }
+  // 参数不确定，可能有多个：...args: any[]
+  emit(event: string, ...args: any[]): void {
+    const callbackList = this.events.get(event);
+    callbackList && callbackList.forEach((fn) => fn(...args));
+  }
+
+  off(event: string, callback: Function): void {
+    const callbackList = this.events.get(event);
+    callbackList && callbackList.splice(callbackList.indexOf(callback), 1);
+  }
+  once(event: string, callback: Function): void {
+    //1.创建一个自定义函数，通过on触发，触发完后立马通过off回收掉
+    const cb = (...args: any[]) => {
+      callback(...args);
+      this.off(event, cb);
+    };
+    this.on(event, cb);
+  }
+}
+
+const bus = new EventBus();
+
+const fnc = (a: number, b: boolean) => {
+  console.log(a, b);
+};
+// 1.具体结构
+
+// 有一个问题： 我的callback数组在on的订阅中心中，每次都会push进去，所以会有重复的callback，当off一次只会删除一个，
+// bus.on("message", fnc) // 1 false
+
+// bus.on("message", fnc)// 1 false
+
+// bus.off("message", fnc)  //发现还会打印一次  1 false
+
+// console.log(bus);
+
+// on可以监听多个，所以说callback用数组存
+
+bus.once("message", fnc); // 2 false
+bus.emit("message", 2, false);
+bus.emit("message", 3, false);
+bus.emit("message", 4, false);
+
+// 然后需要把 message 和对应的callback 放入订阅中心map中
+```
+
+## 2.通过对象+set 去写发布订阅模式
+
+```typescript
+/**
+ * 方式二，我不通过数组去存callback，而是通过set存callback函数(...args: any[]) => void>，这样天然去重
+ */
+
+interface _BaseEventBus {
+  events: Record<string, Set<(...args: any[]) => void>>;
+  on: (event: string, callback: (...args: any[]) => void) => void;
+  emit: (event: string, ...args: any[]) => void;
+  off: (event: string, callback: (...args: any[]) => void) => void;
+  once: (event: string, callback: (...args: any[]) => void) => void;
+}
+
+class _EventBus implements _BaseEventBus {
+  events: Record<string, Set<(...args: any[]) => void>> = {};
+
+  on(event: string, callback: (...args: any[]) => void): void {
+    // //  证明存过了
+    // if (this.events[event]) {
+    //     this.events[event].add(callback)
+    // } else {
+    //     // 如果没有该事件，则创建一个
+    //     this.events[event] = new Set()
+    // }
+
+    // 简化写法,等价于上面
+    (this.events[event] ??= new Set()).add(callback);
+  }
+
+  emit(event: string, ...args: any[]): void {
+    // const callbackList = this.events[event]
+    // callbackList && callbackList.forEach(fn => fn(...args))
+
+    //   简化写法
+    this.events[event]?.forEach((fn) => fn(...args));
+  }
+  off(event: string, callback: (...args: any[]) => void): void {
+    this.events[event]?.delete(callback);
+  }
+  once(event: string, callback: (...args: any[]) => void): void {
+    //1.创建一个自定义函数，通过on触发，触发完后立马通过off回收掉
+    const cb = (...args: any[]) => {
+      callback(...args);
+      this.off(event, cb);
+    };
+    this.on(event, cb);
+  }
+}
+
+const eventbus = new _EventBus();
+
+const fnn = (a: number, b: boolean) => {
+  console.log(a, b);
+};
+// eventbus.on('message', fnn)//只打印一次 1, false
+// eventbus.on('message', fnn)
+
+// eventbus.off('message', fnn)
+
+eventbus.once("message", fnn); //只打印555, false  一次
+
+eventbus.emit("message", 555, false);
+eventbus.emit("message", 2, false);
+eventbus.emit("message", 3, false);
+```
+
+## 差别
+
+第一种写法，我们的 callback 是直接 push 到数组，并没有去重，而第二种方式 callback 是用 set 存，天然去重
+
+# 26.weakMap，weakSet，set，map
+
+
+
+
 
 # xx. infer
 

@@ -2,7 +2,6 @@
   "name": "24.webpack-vue",
   "version": "1.0.0",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "webpack-dev-server",
     "build": "webpack"
   },
@@ -15,6 +14,7 @@
     "html-webpack-plugin": "^5.6.2",
     "less": "^4.2.0",
     "less-loader": "^12.2.0",
+    "mini-css-extract-plugin": "^2.9.1",
     "sass": "^1.80.2",
     "sass-loader": "^16.0.2",
     "style-loader": "^4.0.0",
@@ -26,6 +26,7 @@
     "webpack-dev-server": "^5.1.0"
   },
   "dependencies": {
+    "axios": "^1.7.7",
     "vue": "^3.5.12"
   }
 }

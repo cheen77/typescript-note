@@ -5,10 +5,13 @@
 
 <script setup lang = "ts">
 import { ref } from "vue";
+import axios from "axios";
 let x = ref<number>(0)
 const add = () => {
     x.value++
 }
+
+axios.getUri
 </script>
 
 <!-- <style>
@@ -26,7 +29,7 @@ body {
 }
 </style> -->
 
-<style lang="sass">
+<style lang="scss">
 $red: pink;
 
 html,
