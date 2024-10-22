@@ -1170,10 +1170,6 @@ val.name = "Tom"; // setter: Tom
 首先，抽象类是不允许被实例化的
 其次，抽象类中的抽象方法必须被子类实现
 
-```typescript
-
-```
-
 什么是抽象方法?
 所定义的方法,都只能描述不能进行一个实现
 
@@ -3721,8 +3717,268 @@ obj = null;
 
 # 27.proxy & Reflect
 
+# 28.Object.defineProperty vs proxy
+
+## 1.Object.defineProperty
+
+### 1.定义
+
+```javascript
+//obj要定义属性的对象。
+// prop是一个字符串或 Symbol，指定了要定义或修改的属性键。
+// descriptor是要定义或修改的属性的描述符。
+// 返回值是传入函数的对象，其指定的属性已被添加或修改。
+Object.defineProperty(obj, prop, descriptor);
+```
+
+### 2.使用
+
+```javascript
+let object = {};
+let newObj = Object.defineProperty(object, "name", {
+  value: "zhangsan",
+});
+console.log(newObj === object); // true
+```
+
+### 3.默认不允许修改属性,删除属性,枚举属性
+
+```javascript
+let object2: any = {};
+Object.defineProperty(object2, "name", {
+  value: "zhangsan",
+});
+console.log(object2); // {name: "zhangsan"}
+
+object2.name = "lisi"; // {name: "zhangsan"}
+
+delete object2.name; // {name: "zhangsan"}
+
+for (const key in object2) {
+  console.log(key, object2[key]); //无答应
+}
+
+console.log("1", Object.keys(object2)); //[]
+console.log("2", Object.getOwnPropertyNames(object2)); //['name']
+
+/**
+ * 面试： Object.keys和Object.getOwnPropertyNames区别
+ *     1.Object.keys()  只返回可枚举的属性
+ *     2.Object.getOwnPropertyNames()  返回所有属性，包括不可枚举的，但是原型上继承而来的属性拿不到
+ */
+```
+
+### 4.数据描述符 存取描述符
+
+#### 1. 数据描述符
+
+- value 与属性绑定的值
+- configurable 是否可 删除
+- enumerable 属性是否可枚举
+- writable 属性是否可修改
+
+```typescript
+// configurable 是否可 删除
+let object3: any = {};
+Object.defineProperty(object3, "name", {
+  value: "zhangsan",
+  // configurable: true
+  writable: true,
+});
+
+// delete object3.name//{}
+object3.name = "Tom"; // {name: "zhangsan"}
+console.log(object3);
+
+// writable  属性是否可修改
+let object4: any = {};
+Object.defineProperty(object4, "name", {
+  value: "zhangsan",
+  writable: true,
+});
+
+object4.name = "Tom"; // {name: "zhangsan"}
+console.log(object4);
+
+let object5: any = {};
+Object.defineProperty(object5, "name", {
+  value: "zhangsan",
+  configurable: true,
+  writable: true,
+  enumerable: true,
+});
+
+object5.name = "Tom"; // {name: "zhangsan"}
+console.log(object5);
+
+for (const key in object5) {
+  console.log("3", key, object5[key]); //name Tom  ,  sex male =>原型上继承Object的属性
+}
+```
+
+#### 2.存取描述符
+
+- get
+- set
+
+```typescript
+// 与typescript中类的get set很类似
+// 注意  value/writable  和 get/set 不能同时存在
+
+let object6: any = {};
+Object.defineProperty(object6, "name", {
+  // value: "zhangsan",
+  get() {
+    console.log("getter", "zhangsan");
+    return "zhangsan";
+  },
+  set(newvalue) {
+    console.log("setter", newvalue);
+  },
+});
+
+object6.name = "Tom"; // setter Tom
+console.log(object6.name); // getter zhangsan
+```
+
+### 5.设计初衷
+
+我们定义的对象中属性是无差异的，没办法定制化属性的行为，如果有对属性一些定制化要求，我们可以使用 Object.defineProperty
+
+架构师：数据从后端返回，前端可能会出现对一些重要属性数据不小心的操作，这是很危险的行为 ，做一个数据的规范化
+
+```typescript
+const res = {
+  a: 1, //不可修改
+  b: 2, //不可枚举
+  c: 3,
+};
+```
+
+具体见项目`obj-data-standardization`下的`obj-data`项目
+
+### 6.vue2 的数据响应原理
+
+#### 1.原理
+
+通过`Object.defineProperty`来拦截数据，将数据转换成 getter/setter 的形式，在访问数据时候调用 getter 函数，在修改数据的时候调用 setter 函数.
+然后利用发布-订阅模式，在数据变动的时候触发依赖，也即发布更新给订阅者，订阅者收到消息后进行相应的处理
+
+#### 2.简单实现
+
+##### 1.最简单的对象实现
+
+```typescript
+let personObj = { name: "张三", age: 18 };
+// 封装一个监听函数变化的函数
+function dproptry(obj: any, key: string, value: any) {
+  Object.defineProperty(obj, key, {
+    get() {
+      console.log("获取", key, "为", value, "成功");
+      return value;
+    },
+    set(newvalue) {
+      if (newvalue === value) return;
+      console.log("设置", key, "为", newvalue, "成功");
+      value = newvalue;
+
+      // 触发依赖，解析模板....
+    },
+  });
+}
+
+function observe(obj: any) {
+  if (typeof obj !== "object" || obj == null) {
+    return;
+  }
+  for (const key in obj) {
+    // 给对象的每一个属性设置监听
+    dproptry(obj, key, obj[key]);
+  }
+}
+
+observe(personObj);
+
+// 1.对象没有嵌套情况，能够触发get set
+console.log("getter", personObj.name); //触发get   zhangsan
+personObj.name = "李四"; //触发set
+```
+
+##### 2.复杂对象实现
+
+```typescript
+let personObj: any = { name: "张三", age: 18, job: { code: "厨师" } };
+// 封装一个监听函数变化的函数
+function dproptry(obj: any, key: string, value: any) {
+  // 如果obj存在嵌套对象value的情况，通过递归去给对象内每一个属性添加监听
+  observer(value);
+
+  Object.defineProperty(obj, key, {
+    get() {
+      console.log("获取", key, "为", value, "成功");
+      return value;
+    },
+    set(newvalue) {
+      if (newvalue === value) return;
+
+      // 如果出现赋值为一个对象的情况，需要再次调用observe函数，给这个对象添加监听
+      observer(newvalue);
+
+      console.log("设置", key, "为", newvalue, "成功");
+      value = newvalue;
+      // 触发依赖，解析模板....
+    },
+  });
+}
+function observer(obj: any) {
+  if (typeof obj !== "object" || obj == null) {
+    return;
+  }
+  for (const key in obj) {
+    // 给对象的每一个属性设置监听
+    dproptry(obj, key, obj[key]);
+  }
+}
+observer(personObj);
+
+// 情况一：嵌套对象
+// console.log("getter", personObj.job.code); //触发两次 get  获取 job 为 {code: '厨师'} 成功
+// personObj.job.code = "司机"  //不加递归是 不触发set ，加了递归会 打印两次 设置 code 为 司机 成功
+
+// 情况二：将原有key的value赋值成对象
+// personObj.name = { sname: "李四" } // 会触发set函数，    设置 name 为 {sname: '李四'} 成功
+// console.log("getter", personObj.name.sname);////触发两次 get  获取 name  为 { sname: "李四" } 成功
+// personObj.name.sname = "王五" //不在set函数加递归是 不触发set ，加了递归会打印 设置 sname 为 王五 成功
+
+// 情况三：对象添加属性，无法get set 劫持     ==>增加$set方法
+personObj.sex = "男";
+// console.log(personObj.sex); //男   但是不会走get set
+
+// 情况四：对象删除属性，无法get set 劫持   ==> 增加$delete方法
+delete personObj.age;
+
+// 情况五： 对数组的 api 无法劫持  ==>重新数组的api
+let list = [1, 2, 3];
+observer(list);
+
+list.push(444);
+console.log(list);
+```
+
+#### 3.弊端
+
+- 对对象的添加和删除操作，无法劫持到 =》新增 $set和$delete 方法
+- 对数组的 api 无法劫持到 =》重写数组的 api
+- 存在深层嵌套关系，性能问题 无脑递归造成
+
+## 2.proxy
+
 # xx. infer
 
 `infer`就是推导泛型参数
 
 `infer` 声明只能出现在 `extends` 子语句中
+
+```
+
+```
