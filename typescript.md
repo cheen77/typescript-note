@@ -3717,6 +3717,482 @@ obj = null;
 
 # 27.proxy & Reflect
 
+## 1.proxy
+
+### 1.定义
+
+Proxy 对象用于创建一个对象的代理，从而实现基本操作的拦截和自定义（如属性查找、赋值、枚举、函数调用等）
+
+proxy 支持对象 数组 函数 set map 的代理
+
+```javascript
+const proxy = new Proxy(target, handler);
+```
+
+- target：目标对象，可以是任何类型的对象，包括原生数组，函数，甚至 another proxy。
+- handler：一个通常以函数作为属性的对象，各属性中的函数分别定义了在执行各种操作时代理 p 的行为。
+
+### 2. handler
+
+Proxy 支持的 13 种拦截操作：
+
+- `get(target, propKey, receiver)`：拦截对象属性的读取，比如 `proxy.foo` 和 `proxy['foo']`。
+- `set(target, propKey, value, receiver)`：拦截对象属性的设置，比如 `proxy.foo = v` 或 `proxy['foo'] = v`，返回一个布尔值。
+- `has(target, propKey)`：拦截 `propKey in proxy` 的操作，返回一个布尔值。
+- `deleteProperty(target, propKey)`：拦截 `delete proxy[propKey]`的操作，返回一个布尔值。
+- `ownKeys(target)`：拦截 `Object.getOwnPropertyNames(proxy)`、`Object.getOwnPropertySymbols(proxy)`、`Object.keys(proxy)`、`for...in 循环`，返回一个数组。该方法返回目标对象所有自身的属性的属性名，而` Object.keys()`的返回结果仅包括目标对象自身的可遍历属性。
+- `getOwnPropertyDescriptor(target, propKey)`：拦截 `Object.getOwnPropertyDescriptor(proxy, propKey)`，返回属性的描述对象。
+- `defineProperty(target, propKey, propDesc)`：拦截 `Object.defineProperty(proxy, propKey, propDesc)`、`Object.defineProperties(proxy, propDescs)`，返回一个布尔值。
+- `preventExtensions(target)`：拦截` Object.preventExtensions(proxy)`，返回一个布尔值。
+- `getPrototypeOf(target)`：拦截` Object.getPrototypeOf(proxy)`，返回一个对象。
+- `isExtensible(target)`：拦截` Object.isExtensible(proxy)`，返回一个布尔值。
+- `setPrototypeOf(target, proto)`：拦截 `Object.setPrototypeOf(proxy, proto)`，返回一个布尔值。如果目标对象是函数，那么还有两种额外操作可以拦截。
+- `apply(target, object, args)`：拦截` Proxy` 实例作为函数调用的操作，比如 `proxy(...args)、proxy.call(object, ...args)`、`proxy.apply(...)`。
+- `construct(target, args)`：拦截 `Proxy` 实例作为构造函数调用的操作，比如 `new proxy(...args)`。
+
+[具体案例看这里](https://github.com/tmflsby/notes/blob/master/%E3%80%8AES6%E6%A0%87%E5%87%86%E5%85%A5%E9%97%A8%EF%BC%88%E7%AC%AC3%E7%89%88%EF%BC%89%E3%80%8B%E2%80%94%E2%80%94%E9%98%AE%E4%B8%80%E5%B3%B0/14.Proxy/Proxy.md)
+
+### 3.实现
+
+```typescript
+// proxy 代理13个方法 参数一模一样
+// Reflect 反射13个方法 参数一模一样
+//mobx observable观察者模式  类似于vuex redux
+// proxy支持对象 数组 函数 set map
+
+let lucyObj = { name: "lucy", age: 19 };
+console.log(lucyObj.age); //19
+console.log(Reflect.get(lucyObj, "age", lucyObj)); //19
+console.log(Reflect.set(lucyObj, "age", "20", lucyObj)); //true
+
+let proxy = new Proxy(lucyObj, {
+  //receiver 可以保证上下文的this正确
+  get(target, propKey, receiver) {
+    console.log(target); //{ name: 'lucy', age: 19 }
+    console.log(propKey); //age
+    console.log(receiver); //{ name: 'lucy', age: 19 }
+    return Reflect.get(target, propKey, receiver); //Reflect是es6推荐的对对象操作的方法,更加语义化 此处相当于 return target[propKey]
+  },
+  set(target, propKey, value, receiver) {
+    return Reflect.set(target, propKey, value, receiver);
+  },
+});
+
+console.log(proxy.age); //触发get
+```
+
+### 4.简单的 mobx 观察者模式
+
+```typescript
+const list: Set<Function> = new Set(); //事件存储器
+//订阅函数
+const subscribe = (fn: Function) => {
+  if (!list.has(fn)) {
+    list.add(fn);
+  }
+};
+
+// 观察函数
+const observable = <T extends object>(params: T) => {
+  return new Proxy(params, {
+    set(target, propKey, value, receiver) {
+      const result = Reflect.set(target, propKey, value, receiver);
+      list.forEach((fn) => fn());
+      return result;
+    },
+  });
+};
+
+const personProxy = observable({ name: "Jack", age: 30 });
+
+subscribe(() => {
+  console.log("订阅函数变化", personProxy.name, personProxy.age); //订阅函数 Tom 30   订阅函数变化 Tom 20
+});
+
+personProxy.name = "Tom"; //触发set
+personProxy.age = 20; //触发set
+```
+
+### 5.优势
+
+- 允许在对象操作层面进行拦截和定制，提供了更高级的控制和行为修改能力。
+- 支持对对象的读取和设置等操作进行自定义处理，增强了代码的灵活性和可维护性。
+
+## 2.Reflect
+
+### 1.概述
+
+`Reflect` 是 `ES6` 中引入的一个新的内置对象，提供了一组静态方法，这些方法与一些操作符和语句的行为是一致的。Reflect 对象的方法可以被用于代替一些传统的操作，比如属性的获取、设置、删除，函数的调用等，同时也提供了一些元编程的能力。
+
+### 2.设计目的
+
+`Reflect` 对象与 `Proxy `对象一样，也是 `ES6` 为了操作对象而提供的新 API。`Reflect` 对象的设计目的有这样几个。
+
+- 将 `Object` 对象的一些明显属于语言内部的方法（比如 `Object.defineProperty`），放到 `Reflect` 对象上。
+- 修改某些 `Object` 方法的返回结果，让其变得更合理。
+
+```javascript
+// 老写法
+try {
+  Object.defineProperty(target, property, attributes);
+  // success
+} catch (e) {
+  // failure
+}
+
+// 新写法
+if (Reflect.defineProperty(target, property, attributes)) {
+  // success
+} else {
+  // failure
+}
+```
+
+- 让 `Object` 操作都变成函数行为，更加语义化。
+
+```javascript
+//某些Object操作是命令式，比如name in obj和delete obj[name]，
+// 而Reflect.has(obj, name)和Reflect.deleteProperty(obj, name)让它们变成了函数行为。
+
+// 老写法
+"assign" in Object; // true
+// 新写法
+Reflect.has(Object, "assign"); // true
+
+const obj = { name: "tom" };
+// 老写法
+delete obj[name];
+// 新写法
+Reflect.deleteProperty(obj, name);
+```
+
+- `Reflect` 对象的方法与 `Proxy` 对象的方法一一对应。
+
+```typescript
+let proxy = new Proxy(lucyObj, {
+  //receiver 可以保证上下文的this正确
+  get(target, propKey, receiver) {
+    console.log(target); //{ name: 'lucy', age: 19 }
+    console.log(propKey); //age
+    console.log(receiver); //{ name: 'lucy', age: 19 }
+    return Reflect.get(target, propKey, receiver); //Reflect是es6推荐的对对象操作的方法,更加语义化 此处相当于 return target[propKey]
+  },
+  set(target, propKey, value, receiver) {
+    return Reflect.set(target, propKey, value, receiver);
+  },
+});
+```
+
+### 3.静态方法
+
+与大多数全局对象不同 `Reflect` 并非一个构造函数，所以不能通过 `new` 运算符对其进行调用，或者将 `Reflect` 对象作为一个函数来调用。`Reflect` 的所有属性和方法都是`静态`的（就像 Math 对象）。
+
+`Reflect`对象一共有 13 个静态方法。
+
+- Reflect.get(target, name, receiver)
+- Reflect.set(target, name, value, receiver)
+- Reflect.apply(target, thisArg, args)
+- Reflect.construct(target, args)
+- Reflect.defineProperty(target, name, desc)
+- Reflect.deleteProperty(target, name)
+- Reflect.has(target, name)
+- Reflect.ownKeys(target)
+- Reflect.isExtensible(target)
+- Reflect.preventExtensions(target)
+- Reflect.getOwnPropertyDescriptor(target, name)
+- Reflect.getPrototypeOf(target)
+- Reflect.setPrototypeOf(target, prototype)
+
+上面这些方法的作用，大部分与`Object`对象的同名方法的作用都是相同的，而且它与`Proxy`对象的方法是一一对应的。
+
+#### 1.Reflect.get(target, name, receiver)
+
+`Reflect.get` 方法查找并返回 `target` 对象的 `name` 属性，如果没有该属性，则返回 `undefined`。
+
+```typescript
+let myObject = {
+  foo: 1,
+  bar: 2,
+  get baz() {
+    return this.foo + this.bar;
+  },
+};
+
+console.log(Reflect.get(myObject, "foo")); // 1
+
+// 如果name属性部署了读取函数（getter），则读取函数的this绑定receiver。
+
+let myReceiverObject = {
+  foo: 4,
+  bar: 4,
+};
+
+console.log(Reflect.get(myObject, "baz", myReceiverObject)); // 8
+```
+
+#### 2.Reflect.set(target, name, value, receiver)
+
+`Reflect.set `方法设置` target` 对象的` name` 属性等于 `value`。 返回布尔值
+
+```typescript
+let myObject2 = {
+  foo: 0,
+  set bar(value: number) {
+    this.foo = value;
+  },
+};
+console.log(myObject2.foo); //0
+Reflect.set(myObject2, "foo", 111);
+console.log(myObject2.foo); ///111
+Reflect.set(myObject2, "bar", 222);
+console.log(myObject2.foo); ///222
+
+// 如果name属性设置了赋值函数，则赋值函数的this绑定receiver。
+let myReceiverObject2 = {
+  foo: 1,
+};
+
+Reflect.set(myObject2, "bar", 999, myReceiverObject2);
+console.log(myReceiverObject2.foo); //999
+console.log(myObject2.foo); //222
+
+// 注意，如果 Proxy对象和 Reflect对象联合使用，前者拦截赋值操作，
+// 后者完成赋值的默认行为，而且传入了receiver，那么Reflect.set会触发Proxy.defineProperty拦截。
+
+let p = {
+  a: "a",
+};
+
+let Pobj = new Proxy(p, {
+  set(target, key, value, receiver) {
+    console.log("set"); // set
+    return Reflect.set(target, key, value, receiver);
+  },
+  defineProperty(target, key, attribute) {
+    console.log("defineProperty"); // defineProperty
+    return Reflect.defineProperty(target, key, attribute);
+  },
+});
+Pobj.a = "A";
+
+// 如果Reflect.set没有传入receiver，那么就不会触发defineProperty拦截。
+
+let Pobj1 = new Proxy(p, {
+  set(target, key, value) {
+    console.log("set"); // set
+    return Reflect.set(target, key, value);
+  },
+  defineProperty(target, key, attribute) {
+    console.log("defineProperty"); // 不打印
+    return Reflect.defineProperty(target, key, attribute);
+  },
+});
+Pobj1.a = "A";
+```
+
+#### 3.Reflect.has(obj, name)
+
+`Reflect.has` 方法对应 `name in obj` 里面的 `in` 运算符。返回布尔值
+
+```typescript
+let has_obj = {
+  name: "lucy",
+};
+
+// 旧写法
+console.log("name" in has_obj); //true
+
+// 新写法
+Reflect.has(has_obj, "name"); // true
+```
+
+#### 4.Reflect.deleteProperty(obj, name)
+
+`Reflect.deleteProperty` 方法等同于` delete obj[name]`，用于删除对象的属性。返回布尔值
+
+```typescript
+interface DeleteObj {
+  name?: string;
+  age?: number;
+}
+
+let delete_obj: DeleteObj = {
+  name: "lucy",
+  age: 19,
+};
+
+// 旧写法
+console.log(delete delete_obj.age); //true
+
+// 新写法
+console.log(Reflect.deleteProperty(delete_obj, "name")); //true
+
+// 该方法返回一个布尔值。如果删除成功，或者被删除的属性不存在，返回true；删除失败，被删除的属性依然存在，返回false。
+```
+
+#### 5.Reflect.construct(target, args)
+
+`Reflect.construct` 方法等同于 `new target(...args)`，这提供了一种不使用 `new`，来调用构造函数的方法。
+
+```typescript
+class Greeting {
+  name: string;
+  constructor(name: string) {
+    this.name = name;
+  }
+}
+// 使用 new 的写法
+const greet = new Greeting("张三");
+// 使用 Reflect.construct 的写法
+const greet1 = Reflect.construct(Greeting, ["李四"]);
+console.log(greet.name); //张三
+console.log(greet1.name); //李四
+```
+
+#### 6.Reflect.getPrototypeOf(obj)
+
+`Reflect.getPrototypeOf` 方法用于读取对象的**proto**属性，对应 `Object.getPrototypeOf(obj)`。
+
+```typescript
+// 旧写法
+console.log(Object.getPrototypeOf(greet) === Greeting.prototype); //true
+
+// 新写法
+console.log(Reflect.getPrototypeOf(greet) === Greeting.prototype); //true
+```
+
+#### 7.Reflect.setPrototypeOf(obj, newProto)
+
+`Reflect.setPrototypeOf` 方法用于设置目标对象的原型（prototype）， 对应` Object.setPrototypeOf(obj, newProto)`方法。
+它返回一个布尔值，表示是否设置成功。
+
+```typescript
+Reflect.setPrototypeOf(greet, { a: 1 });
+// @ts-ignore
+console.log(greet.a); //1
+
+const myObj = {} as any;
+// console.log(myObj.length); //报错 ，类型“{}”上不存在属性“length”。
+// 将myObj的原型设置为Array.prototype，即：
+Reflect.setPrototypeOf(myObj, Array.prototype);
+console.log(myObj.length); //0
+```
+
+#### 8.Reflect.apply(func, thisArg, args)
+
+`Reflect.apply` 方法等同于` Function.prototype.apply.call(func, thisArg, args)`，用于绑定 `this `对象后执行给定函数。
+
+```typescript
+const ages = [11, 33, 12, 54, 18, 96];
+const youngest = Math.min.apply(Math, ages);
+const youngest2 = Reflect.apply(Math.min, Math, ages);
+console.log(youngest, youngest2, Math.min(...ages));
+```
+
+#### 9.Reflect.defineProperty(target, propertyKey, attributes)
+
+`Reflect.defineProperty` 方法基本等同于 `Object.defineProperty`，用来为对象定义属性。未来，后者会被逐渐废除，请从现在开始就使用 `Reflect.defineProperty` 代替它。
+
+```typescript
+function MyDate() {}
+
+// 旧写法
+Object.defineProperty(MyDate, "now", {
+  value: 1,
+});
+
+// 新写法
+Reflect.defineProperty(MyDate, "now", {
+  value: 1,
+});
+//@ts-ignore
+console.log(MyDate.now); //1
+```
+
+#### 10.Reflect.getOwnPropertyDescriptor(target, propertyKey)
+
+`Reflect.getOwnPropertyDescriptor` 基本等同于 `Object.getOwnPropertyDescriptor`，用于得到指定属性的描述对象，将来会替代掉后者。
+
+```typescript
+let myOwnObject = {};
+Object.defineProperty(myOwnObject, "hidden", {
+  value: true,
+  enumerable: false,
+});
+
+// 旧写法
+let theDescriptor = Object.getOwnPropertyDescriptor(myOwnObject, "hidden");
+
+// 新写法
+let theDescriptor2 = Reflect.getOwnPropertyDescriptor(myOwnObject, "hidden");
+console.log(theDescriptor); // {value: true,writable: false,enumerable: false,configurable: false}
+```
+
+#### 11.Reflect.isExtensible (target)
+
+`Reflect.isExtensible` 方法对应 `Object.isExtensible`，返回一个布尔值，表示当前对象是否可扩展。
+“对象可扩展”指的是一个对象是否可以添加新的属性或方法
+
+```typescript
+// 旧写法
+console.log(Object.isExtensible(myOwnObject)); // true
+
+// 新写法
+console.log(Reflect.isExtensible(myOwnObject)); // true
+```
+
+#### 12.Reflect.preventExtensions(target)
+
+`Reflect.preventExtensions` 对应 `Object.preventExtensions `方法，用于让一个对象变为不可扩展。它返回一个布尔值，表示是否操作成功。
+
+```typescript
+let myPreventObject = {};
+
+// 旧写法
+console.log(Object.preventExtensions(myPreventObject)); // Object {}
+
+// 新写法
+console.log(Reflect.preventExtensions(myPreventObject)); // true
+```
+
+#### 13.Reflect.ownKeys(target)
+
+`Reflect.ownKeys `方法用于返回对象的所有属性，基本等同于 `Object.getOwnPropertyNames` 与 `Object.getOwnPropertySymbols` 之和。
+
+```typescript
+let myKeysObject = {
+  foo: 1,
+  bar: 2,
+  [Symbol.for("baz")]: 3,
+  [Symbol.for("bing")]: 4,
+  1: 2,
+};
+//@ts-ignore
+Object.prototype.aaa = 1;
+
+// 旧写法
+// console.log(Object.getOwnPropertyNames(myKeysObject));// [1,'foo', 'bar']
+
+// console.log(Object.getOwnPropertySymbols(myKeysObject));//[Symbol(baz), Symbol(bing)]
+
+// 新写法  但是只能获取到对象本身的属性，不包括原型上的属性
+console.log(Reflect.ownKeys(myKeysObject)); // [1,'foo', 'bar', Symbol(baz), Symbol(bing)]
+```
+
+### 4.优势
+
+- 提供了更统一和一致的 API，使得操作更加可预测和可控。
+- 支持一些元编程的能力，使得代码更加易于理解和维护。
+
+## 3.综合特性
+
+- **配合使用**：
+  -- `Proxy` 和 `Reflect` 可以结合使用，通过 `Proxy` 拦截器捕获对象的操作，然后通过 `Reflect` 方法进行相应的操作。
+- **元编程能力**：
+  -- `Proxy` 和 `Reflect` 为 `JavaScript` 提供了强大的元编程能力，使得开发者可以更灵活地操作和定制对象的行为。
+- **ES6 增强**：
+  -- 这两个特性是 ES6 的重要增强，为 `JavaScript` 的语言特性提供了更多的可能性和便利性。
+
 # 28.Object.defineProperty vs proxy
 
 ## 1.Object.defineProperty
@@ -3972,6 +4448,127 @@ console.log(list);
 - 存在深层嵌套关系，性能问题 无脑递归造成
 
 ## 2.proxy
+
+### 1.vue3 响应式原理
+
+`vue3` 基于 `ES6` 新增的 `Proxy` 对象实现数据代理以及通过 Reflect 对源数据进行操作，它解决了 `vue2 `中无法追踪数据新增或删除属性的问题。另外。`Proxy `可以直接监听数组，无需像 `vue2` 响应式那样需要重新数组方法进行拦截
+
+### 2.简单实现
+
+```typescript
+// vue3 响应式   reactive ref
+
+function reactive<T extends object>(obj: T) {
+  return new Proxy(obj, {
+    get(target, key) {
+      console.log("get", key);
+      const result = Reflect.get(target, key) as object;
+      return isObject(result) ? reactive(result) : result;
+    },
+    set(target, key, value) {
+      console.log("set", key, value);
+      return Reflect.set(target, key, value);
+    },
+    deleteProperty(target, key) {
+      console.log("delete", key);
+      return Reflect.deleteProperty(target, key);
+    },
+  });
+}
+interface OnePerson {
+  name: string;
+  age?: number;
+  gender?: string;
+}
+
+/**
+ * 1.解决vue2中对对象的添加和删除操作，无法劫持到
+
+ */
+let onePerson = reactive<OnePerson>({ name: "张三", age: 18 });
+
+console.log(onePerson.name); // 张三
+onePerson.age = 30;
+
+onePerson.gender = "男"; // set gender 男
+delete onePerson.age; // delete age
+
+/**
+ * 2.解决vue2中对数组的 api 无法劫持到
+ */
+let oneArr = reactive<number[]>([1, 2, 3]);
+
+oneArr.push(4); // [1,2,3,4]
+/** get push
+    get length
+    set 3 4
+    set length 4
+*/
+oneArr.pop(); // [1,2,3]
+/**
+ *  get pop
+    get length
+    get 3
+    delete 3
+    set length 3
+ */
+
+/**
+ * 3.解决vue2中存在深层嵌套关系，性能问题 无脑递归造成  =》懒加载
+ */
+
+function isObject<T>(obj: T) {
+  if (typeof obj !== "object" || obj == null) {
+    return false;
+  }
+  return true;
+}
+
+interface OneUser {
+  name: string;
+  age: number;
+  info: {
+    address: string;
+    height: number;
+  };
+}
+let oneUser = reactive<OneUser>({
+  name: "张三",
+  age: 18,
+  info: {
+    address: "中国",
+    height: 180,
+  },
+});
+
+console.log(oneUser.info.address);
+oneUser.info.address = "新加坡";
+// get info
+// 中国
+// get info
+
+// ===》
+
+// get info
+// get address
+// 中国
+// get info
+// set address 新加坡
+
+// 发现key也只打印了info这一层，说明proxy还是不能解决嵌套问题，需要用递归（但是proxy是一个懒加载，用到才递归）
+
+// 赋值对象
+// @ts-ignore
+oneUser.name = { sname: "Tom" }; // set name {sname: 'Tom'}
+```
+
+## 3.proxy 与 Object.defineProperty 的区别
+
+- `Proxy` 可以代理整个对象，`Object.defineProperty` 只能代理对象上的属性
+- `Proxy` 可以代理数组，`Object.defineProperty` 只能代理数组上的索引
+- `Proxy` 可以代理对象上的所有操作，包括 `get`、`set`、`has`、`deleteProperty`、`ownKeys` 等 13 种方法，而 `Object.defineProperty` 只能代理对象上的 `get` 和 `set` 操作
+- `Proxy`懒加载，解决嵌套递归的性能问题，而 `Object.defineProperty` 是无脑递归.
+- `Proxy`可能存在兼容性问题，老 IE 不支持
 
 # xx. infer
 
