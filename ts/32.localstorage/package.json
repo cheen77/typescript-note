@@ -1,0 +1,17 @@
+{
+  "name": "32.localstorage",
+  "version": "1.0.0",
+  "main": "rollup.config.js",
+  "type": "module",
+  "scripts": {
+    "build": "rollup -c"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "rollup": "^4.24.2",
+    "rollup-plugin-typescript2": "^0.36.0",
+    "typescript": "^5.6.3"
+  }
+}
